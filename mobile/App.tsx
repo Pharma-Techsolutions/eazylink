@@ -15,7 +15,7 @@ interface Contact {
 }
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('contacts');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard'); // Changed from 'contacts' to 'dashboard'
   const [activeCall, setActiveCall] = useState<Contact | null>(null);
 
   const handleStartCall = (contact: Contact) => {
@@ -25,19 +25,25 @@ export default function App() {
 
   const handleEndCall = () => {
     setActiveCall(null);
-    setCurrentScreen('contacts');
+    setCurrentScreen('dashboard'); // Changed to go back to dashboard instead of contacts
   };
 
   return (
     <SafeAreaView style={styles.container}>
       {currentScreen === 'dashboard' && (
-        <DashboardScreen onNavigateToWiFi={() => setCurrentScreen('wifi')} />
+        <DashboardScreen 
+          onNavigateToWiFi={() => setCurrentScreen('wifi')}
+          onNavigateToContacts={() => setCurrentScreen('contacts')} // Add this prop
+        />
       )}
       {currentScreen === 'wifi' && (
         <WiFiListScreen onBack={() => setCurrentScreen('dashboard')} />
       )}
       {currentScreen === 'contacts' && (
-        <ContactsScreen onStartCall={handleStartCall} />
+        <ContactsScreen 
+          onStartCall={handleStartCall}
+          onBack={() => setCurrentScreen('dashboard')} // Add back button
+        />
       )}
       {currentScreen === 'call' && activeCall && (
         <CallScreen
