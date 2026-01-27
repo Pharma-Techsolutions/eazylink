@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from slowapi.errors import RateLimitExceeded
 import logging
 from app.core.config import settings
-from app.api import auth, users
+from app.api import auth, users, calls
 from app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from app.models.database import engine, Base
 from app.core.security import verify_password, get_password_hash, create_access_token
@@ -89,6 +89,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
+app.include_router(calls.router, prefix="/api/v1")
 
 # Health check endpoint
 @app.get("/health")

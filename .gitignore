@@ -48,3 +48,10 @@ Thumbs.db
 
 # Obsidian
 .obsidian/
+.encryption_key
+backend/.encryption_key
+.env
+backend/.env
+venv/
+node_modules/
+.DS_Store
