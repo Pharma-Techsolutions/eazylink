@@ -1,53 +1,32 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { authAPI } from './src/services/api';
-import { TokenManager } from './src/services/secureStorage';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { useAuth } from '../context/AuthContext';
 
-export default function App() {
-  const [user, setUser] = useState(null);
+export function LoginScreen({ navigation }: any) {
+  const { login, loading, error, clearError } = useAuth();
   const [email, setEmail] = useState('alice@example.com');
   const [password, setPassword] = useState('TestPass123!');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleLogin = async () => {
     try {
-      setLoading(true);
-      setError('');
-      const response = await authAPI.login(email, password);
-      await TokenManager.storeTokens(response.data.token);
-      setUser(response.data.user);
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
-      console.error(err);
-    } finally {
-      setLoading(false);
+      clearError();
+      await login(email, password);
+      navigation.replace('Home');
+    } catch (err) {
+      console.error('Login error:', err);
     }
   };
-
-  const handleLogout = async () => {
-    await TokenManager.clearTokens();
-    setUser(null);
-  };
-
-  if (user) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Private</Text>
-        <Text style={styles.subtitle}>Welcome, {user.name}!</Text>
-        <TouchableOpacity style={styles.button} onPress={handleLogout}>
-          <Text style={styles.buttonText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Private</Text>
       <Text style={styles.subtitle}>Secure Calling</Text>
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && (
+        <View style={styles.errorBox}>
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      )}
 
       <TextInput
         style={styles.input}
@@ -55,6 +34,8 @@ export default function App() {
         value={email}
         onChangeText={setEmail}
         editable={!loading}
+        autoCapitalize="none"
+        placeholderTextColor="#999"
       />
 
       <TextInput
@@ -64,6 +45,7 @@ export default function App() {
         onChangeText={setPassword}
         secureTextEntry
         editable={!loading}
+        placeholderTextColor="#999"
       />
 
       <TouchableOpacity
@@ -77,6 +59,10 @@ export default function App() {
           <Text style={styles.buttonText}>Login</Text>
         )}
       </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+        <Text style={styles.linkText}>Don't have an account? Register</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -89,5 +75,7 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#007AFF', padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 20 },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  error: { color: 'red', marginBottom: 15, textAlign: 'center', backgroundColor: '#ffebee', padding: 10, borderRadius: 8 },
+  errorBox: { backgroundColor: '#ffebee', padding: 12, borderRadius: 8, marginBottom: 15 },
+  error: { color: '#c62828', textAlign: 'center' },
+  linkText: { textAlign: 'center', color: '#007AFF', marginTop: 15 },
 });

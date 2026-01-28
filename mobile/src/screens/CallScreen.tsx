@@ -1,189 +1,155 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
-import { Colors } from '../constants/colors';
+import React, { useState } from 'react';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { callAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
-interface CallScreenProps {
-  contactName: string;
-  contactId: string;
-  onEndCall: () => void;
-}
+export function CallScreen({ navigation }: any) {
+  const { user, logout } = useAuth();
+  const [recipientId, setRecipientId] = useState('2');
+  const [callData, setCallData] = useState<any>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [callStatus, setCallStatus] = useState<'idle' | 'initiated' | 'confirmed' | 'ended'>('idle');
 
-export default function CallScreen({ contactName, contactId, onEndCall }: CallScreenProps) {
-  const [isMuted, setIsMuted] = useState(false);
-  const [isSpeaker, setIsSpeaker] = useState(true);
-  const [callDuration, setCallDuration] = useState(0);
-  const [callStatus, setCallStatus] = useState('Connecting...');
-
-  useEffect(() => {
-    // Simulate connection
-    const connectTimer = setTimeout(() => {
-      setCallStatus('Connected');
-    }, 2000);
-
-    // Duration timer
-    const durationTimer = setInterval(() => {
-      setCallDuration((prev) => prev + 1);
-    }, 1000);
-
-    return () => {
-      clearTimeout(connectTimer);
-      clearInterval(durationTimer);
-    };
-  }, []);
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const handleInitiateCall = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await callAPI.initiateCall(recipientId);
+      setCallData(response.data);
+      setCallStatus('initiated');
+      setVerificationCode(response.data.verification_code);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to initiate call');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEndCall = () => {
-    Alert.alert(
-      'End Call?',
-      `Call duration: ${formatDuration(callDuration)}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'End Call', style: 'destructive', onPress: onEndCall },
-      ]
-    );
+  const handleConfirmCode = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await callAPI.confirmCallCode(callData.call_id, verificationCode);
+      if (response.data.is_verified) {
+        setCallStatus('confirmed');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to confirm code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEndCall = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      await callAPI.endCall(callData.call_id, 120);
+      setCallStatus('ended');
+      setTimeout(() => {
+        setCallData(null);
+        setCallStatus('idle');
+      }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to end call');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigation.replace('Login');
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{contactName[0].toUpperCase()}</Text>
+        <View>
+          <Text style={styles.title}>Make a Call</Text>
+          <Text style={styles.subtitle}>{user?.name} (ID: {user?.id})</Text>
         </View>
-        <Text style={styles.contactName}>{contactName}</Text>
-        <Text style={styles.callStatus}>{callStatus}</Text>
-        {callStatus === 'Connected' && (
-          <Text style={styles.duration}>{formatDuration(callDuration)}</Text>
-        )}
-      </View>
-
-      <View style={styles.controls}>
-        <TouchableOpacity
-          style={[styles.controlButton, isMuted && styles.controlButtonActive]}
-          onPress={() => setIsMuted(!isMuted)}
-        >
-          <Text style={styles.controlIcon}>{isMuted ? '🔇' : '🎤'}</Text>
-          <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.controlButton, isSpeaker && styles.controlButtonActive]}
-          onPress={() => setIsSpeaker(!isSpeaker)}
-        >
-          <Text style={styles.controlIcon}>{isSpeaker ? '🔊' : '🔈'}</Text>
-          <Text style={styles.controlLabel}>Speaker</Text>
+        <TouchableOpacity onPress={handleLogout}>
+          <Text style={styles.logoutBtn}>Logout</Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.endCallButton} onPress={handleEndCall}>
-        <Text style={styles.endCallIcon}>📞</Text>
-        <Text style={styles.endCallText}>End Call</Text>
-      </TouchableOpacity>
+      {error && <Text style={styles.error}>{error}</Text>}
 
-      <Text style={styles.infoText}>
-        💡 Note: This is a demo. Real calling requires Agora integration.
-      </Text>
-    </View>
+      {callStatus === 'idle' && (
+        <>
+          <TextInput
+            style={styles.input}
+            placeholder="Recipient User ID"
+            value={recipientId}
+            onChangeText={setRecipientId}
+            keyboardType="numeric"
+          />
+          <TouchableOpacity style={styles.button} onPress={handleInitiateCall} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Initiate Call</Text>}
+          </TouchableOpacity>
+        </>
+      )}
+
+      {callStatus === 'initiated' && (
+        <>
+          <View style={styles.codeBox}>
+            <Text style={styles.codeLabel}>Verification Code:</Text>
+            <Text style={styles.code}>{verificationCode}</Text>
+            <Text style={styles.info}>Share this code with the recipient</Text>
+          </View>
+          <TouchableOpacity style={styles.button} onPress={handleConfirmCode} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Confirm Code</Text>}
+          </TouchableOpacity>
+        </>
+      )}
+
+      {callStatus === 'confirmed' && (
+        <>
+          <View style={styles.connectedBox}>
+            <Text style={styles.connected}>Connected ✓</Text>
+            <Text style={styles.callInfo}>Call in progress...</Text>
+          </View>
+          <TouchableOpacity style={[styles.button, styles.endButton]} onPress={handleEndCall} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>End Call</Text>}
+          </TouchableOpacity>
+        </>
+      )}
+
+      {callStatus === 'ended' && (
+        <>
+          <View style={styles.successBox}>
+            <Text style={styles.success}>Call ended successfully ✓</Text>
+          </View>
+          <TouchableOpacity style={styles.button} onPress={() => setCallStatus('idle')}>
+            <Text style={styles.buttonText}>New Call</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.primary,
-    justifyContent: 'space-between',
-    padding: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 100,
-  },
-  avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  avatarText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  contactName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  callStatus: {
-    fontSize: 18,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 8,
-  },
-  duration: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 40,
-    marginBottom: 60,
-  },
-  controlButton: {
-    alignItems: 'center',
-    padding: 20,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    width: 100,
-  },
-  controlButtonActive: {
-    backgroundColor: 'rgba(255,255,255,0.4)',
-  },
-  controlIcon: {
-    fontSize: 36,
-    marginBottom: 8,
-  },
-  controlLabel: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  endCallButton: {
-    backgroundColor: Colors.error,
-    borderRadius: 35,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  endCallIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-    transform: [{ rotate: '135deg' }],
-  },
-  endCallText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  infoText: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    marginBottom: 20,
-  },
+  container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+  title: { fontSize: 28, fontWeight: 'bold' },
+  subtitle: { fontSize: 14, color: '#666', marginTop: 5 },
+  logoutBtn: { color: '#FF3B30', fontSize: 14, fontWeight: '600' },
+  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, marginBottom: 12, borderRadius: 8 },
+  button: { backgroundColor: '#007AFF', padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 15 },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  error: { color: '#c62828', marginBottom: 15, textAlign: 'center', backgroundColor: '#ffebee', padding: 10, borderRadius: 8 },
+  codeBox: { backgroundColor: '#f5f5f5', padding: 20, borderRadius: 8, marginBottom: 15, alignItems: 'center' },
+  codeLabel: { fontSize: 12, color: '#666', marginBottom: 10 },
+  code: { fontSize: 32, fontWeight: 'bold', color: '#007AFF', letterSpacing: 4 },
+  info: { fontSize: 12, color: '#666', marginTop: 10 },
+  connectedBox: { backgroundColor: '#d4edda', padding: 20, borderRadius: 8, marginBottom: 15, alignItems: 'center' },
+  connected: { fontSize: 18, color: '#155724', fontWeight: '600' },
+  callInfo: { fontSize: 14, color: '#155724', marginTop: 10 },
+  endButton: { backgroundColor: '#dc3545' },
+  successBox: { backgroundColor: '#d4edda', padding: 15, borderRadius: 8, marginBottom: 15, alignItems: 'center' },
+  success: { fontSize: 16, color: '#155724', fontWeight: '600' },
 });

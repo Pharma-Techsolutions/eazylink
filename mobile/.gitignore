@@ -43,3 +43,4 @@ yarn-error.*
 .env
 backend/.env
 mobile/.env
+.env.local
