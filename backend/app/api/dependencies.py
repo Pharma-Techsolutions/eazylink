@@ -16,10 +16,7 @@ async def get_current_user(
     """Get current authenticated user"""
     
     token = credentials.credentials
-    print(f"DEBUG: Received token: {token[:50]}...")
-    
     payload = decode_access_token(token)
-    print(f"DEBUG: Payload: {payload}")
     
     if payload is None:
         raise HTTPException(
@@ -27,9 +24,7 @@ async def get_current_user(
             detail="Could not validate credentials"
         )
     
-    user_id: int = payload.get("sub")
-    print(f"DEBUG: User ID from token: {user_id}")
-    
+    user_id: int = int(payload.get("sub"))  # CONVERT TO INT
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
