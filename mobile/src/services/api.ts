@@ -31,8 +31,6 @@ export const authAPI = {
   
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
-  
-  logout: () => api.post('/auth/logout').catch(() => {}),
 };
 
 export const callAPI = {
@@ -53,6 +51,11 @@ export const callAPI = {
   
   reportCall: (callId: string, reason: string, description?: string) =>
     api.post(`/calls/${callId}/report`, { reason, description }),
+};
+
+export const agoraAPI = {
+  getToken: (channelName: string, uid: number) =>
+    api.post('/agora/token', { channel_name: channelName, uid }),
 };
 
 export const userAPI = {

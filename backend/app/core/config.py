@@ -10,10 +10,10 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
     
-    # Security - Use env var, fall back to consistent default
+    # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-fixed-secret-key-for-development-only-change-in-production")
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
     
     # Database
     DATABASE_URL: str
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_HOUR: int = 1000
     
-    # Agora
+    # Agora VoIP
     AGORA_APP_ID: str = ""
     AGORA_APP_CERTIFICATE: str = ""
     
