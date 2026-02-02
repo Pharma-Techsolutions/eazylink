@@ -26,6 +26,8 @@ import {
   ICON_GRAY,
 } from './src/components/CustomIcons';
 
+const PRIMARY_COLOR = '#34C759';
+
 const { width, height } = Dimensions.get('window');
 
 export default function App() {
@@ -45,6 +47,8 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerphone, setIsSpeakerphone] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
+  const [selfDestructCountdown, setSelfDestructCountdown] = useState(0);
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     if (callStatus === 'active') {
@@ -52,6 +56,37 @@ export default function App() {
         setCallDuration((prev) => prev + 1);
       }, 1000);
       return () => clearInterval(interval);
+    }
+  }, [callStatus]);
+
+  // Show toast when call ends, auto-dismiss after 3 seconds
+  useEffect(() => {
+    if (callStatus === 'ended') {
+      setShowToast(true);
+      
+      // Hide toast after 3 seconds
+      const hideToastTimer = setTimeout(() => {
+        setShowToast(false);
+      }, 3000);
+      
+      // Reset everything after toast hides (3.5 seconds total)
+      const resetTimer = setTimeout(() => {
+        setCallData(null);
+        setCallStatus('idle');
+        setCallDuration(0);
+        setRecipientId('');
+        setIsMuted(false);
+        setIsSpeakerphone(false);
+        setIsVideoEnabled(false);
+      }, 3500);
+      
+      return () => {
+        clearTimeout(hideToastTimer);
+        clearTimeout(resetTimer);
+      };
+    } else {
+      // Ensure toast is hidden when not in ended state
+      setShowToast(false);
     }
   }, [callStatus]);
 
@@ -256,25 +291,25 @@ export default function App() {
           <View style={styles.fullscreenControls}>
             {/* Mute */}
             <TouchableOpacity
-              style={[styles.fscButton, isMuted && styles.fscButtonActive]}
+              style={[styles.fscButton, isMuted ? styles.fscButtonActive : styles.fscButtonInactive]}
               onPress={toggleMute}
             >
               {isMuted ? (
                 <MicOffIcon size={32} color={ICON_GRAY} />
               ) : (
-                <MicOnIcon size={32} color={ICON_GREEN} />
+                <MicOnIcon size={32} color={PRIMARY_COLOR} />
               )}
             </TouchableOpacity>
 
             {/* Speaker */}
             <TouchableOpacity
-              style={[styles.fscButton, isSpeakerphone && styles.fscButtonActive]}
+              style={[styles.fscButton, isSpeakerphone ? styles.fscButtonActive : styles.fscButtonInactive]}
               onPress={toggleSpeaker}
             >
               {isSpeakerphone ? (
                 <SpeakerOffIcon size={32} color={ICON_GRAY} />
               ) : (
-                <SpeakerOnIcon size={32} color={ICON_GREEN} />
+                <SpeakerOnIcon size={32} color={PRIMARY_COLOR} />
               )}
             </TouchableOpacity>
 
@@ -288,10 +323,14 @@ export default function App() {
 
             {/* Toggle Video */}
             <TouchableOpacity
-              style={[styles.fscButton]}
+              style={[styles.fscButton, isVideoEnabled ? styles.fscButtonActive : styles.fscButtonInactive]}
               onPress={toggleVideo}
             >
-              <VideoOnIcon size={32} color={ICON_GREEN} />
+              {isVideoEnabled ? (
+                <VideoOnIcon size={32} color={PRIMARY_COLOR} />
+              ) : (
+                <VideoOffIcon size={32} color={ICON_GRAY} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -447,19 +486,16 @@ export default function App() {
             <Text style={styles.endedTitle}>Call Ended</Text>
             <Text style={styles.endedDuration}>{formatDuration(callDuration)}</Text>
             <Text style={styles.endedMessage}>Data securely deleted</Text>
-
-            <TouchableOpacity
-              style={styles.newCallButton}
-              onPress={() => {
-                setCallStatus('idle');
-                setRecipientId('');
-              }}
-            >
-              <Text style={styles.newCallText}>New Call</Text>
-            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
+
+      {/* Toast Banner - Shows for 3 seconds even after page resets */}
+      {showToast && (
+        <View style={styles.toastBanner}>
+          <Text style={styles.toastText}>Conversation will self-destruct</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -472,76 +508,76 @@ const styles = StyleSheet.create({
   // LOGIN
   loginContent: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 40, justifyContent: 'center' },
   logoSection: { alignItems: 'center', marginBottom: 30 },
-  logoBg: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  logoBg: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(59, 130, 246, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   logo: { width: 80, height: 80, borderRadius: 40 },
   titleLarge: { fontSize: 36, fontWeight: '700', color: '#000', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#999', textAlign: 'center', marginBottom: 40 },
+  subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 40 },
 
   formSection: { marginBottom: 30 },
   inputField: { paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#f5f5f5', borderRadius: 10, fontSize: 15, color: '#000', borderWidth: 1, borderColor: '#e0e0e0' },
-  btnLogin: { marginTop: 20, paddingVertical: 14, backgroundColor: ICON_GREEN, borderRadius: 10, alignItems: 'center' },
+  btnLogin: { marginTop: 20, paddingVertical: 14, backgroundColor: PRIMARY_COLOR, borderRadius: 10, alignItems: 'center' },
   btnLoginText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   btnDisabled: { opacity: 0.6 },
 
-  credentialsBox: { backgroundColor: '#f9f9f9', borderRadius: 12, padding: 16, marginBottom: 40, borderLeftWidth: 4, borderLeftColor: ICON_GREEN },
-  credentialsTitle: { fontSize: 12, fontWeight: '600', color: '#666', marginBottom: 8, textTransform: 'uppercase' },
+  credentialsBox: { backgroundColor: 'rgba(59, 130, 246, 0.05)', borderRadius: 12, padding: 16, marginBottom: 40, borderLeftWidth: 4, borderLeftColor: PRIMARY_COLOR },
+  credentialsTitle: { fontSize: 12, fontWeight: '600', color: PRIMARY_COLOR, marginBottom: 8, textTransform: 'uppercase' },
   credentialsText: { fontSize: 13, color: '#333', marginVertical: 3 },
-  credentialsPassword: { fontSize: 12, color: '#999', marginTop: 8 },
+  credentialsPassword: { fontSize: 12, color: '#666', marginTop: 8 },
 
   loginFooter: { alignItems: 'center' },
-  footerSmall: { fontSize: 11, color: '#ccc', marginVertical: 3 },
+  footerSmall: { fontSize: 11, color: '#999', marginVertical: 3 },
 
   // CALL SCREEN
   callContent: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', marginBottom: 24 },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  userAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: ICON_GREEN, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  userAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: PRIMARY_COLOR, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   avatarText: { fontSize: 18, fontWeight: '700', color: '#fff' },
   userName: { fontSize: 15, fontWeight: '600', color: '#000' },
   userId: { fontSize: 12, color: '#999', marginTop: 2 },
   signOutBtn: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#ffe0e0', borderRadius: 6 },
-  signOutText: { color: '#ff4444', fontSize: 12, fontWeight: '600' },
+  signOutText: { color: '#ef4444', fontSize: 12, fontWeight: '600' },
 
   centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   pageTitle: { fontSize: 28, fontWeight: '700', color: '#000', marginBottom: 8 },
-  pageSubtitle: { fontSize: 14, color: '#999', marginBottom: 40 },
+  pageSubtitle: { fontSize: 14, color: '#666', marginBottom: 40 },
 
   recipientInput: { width: '100%', paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#f5f5f5', borderRadius: 10, fontSize: 15, color: '#000', borderWidth: 1, borderColor: '#e0e0e0', marginBottom: 20 },
-  callButton: { width: '100%', paddingVertical: 16, backgroundColor: ICON_GREEN, borderRadius: 12, alignItems: 'center', marginTop: 20, shadowColor: ICON_GREEN, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
+  callButton: { width: '100%', paddingVertical: 16, backgroundColor: PRIMARY_COLOR, borderRadius: 12, alignItems: 'center', marginTop: 20, shadowColor: PRIMARY_COLOR, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
   callButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
 
   statusTitle: { fontSize: 24, fontWeight: '700', color: '#000', marginBottom: 8 },
-  statusSubtitle: { fontSize: 13, color: '#999', marginBottom: 30 },
+  statusSubtitle: { fontSize: 13, color: '#666', marginBottom: 30 },
 
   codeBox: { backgroundColor: '#f5f5f5', borderRadius: 12, padding: 20, marginTop: 20, alignItems: 'center', borderWidth: 2, borderColor: '#e0e0e0' },
   codeLabel: { fontSize: 11, fontWeight: '600', color: '#999', marginBottom: 8, textTransform: 'uppercase' },
-  codeValue: { fontSize: 32, fontWeight: '800', color: ICON_GREEN, letterSpacing: 2, fontFamily: 'Courier New' },
+  codeValue: { fontSize: 32, fontWeight: '800', color: PRIMARY_COLOR, letterSpacing: 2, fontFamily: 'Courier New' },
 
   activeCallBox: { alignItems: 'center', marginBottom: 40 },
   callTimerLabel: { fontSize: 12, fontWeight: '600', color: '#999' },
   callTimer: { fontSize: 52, fontWeight: '800', color: '#000', marginVertical: 8, fontFamily: 'Courier New' },
-  encryptedBadge: { marginTop: 16, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: 'rgba(52, 199, 89, 0.1)', borderRadius: 20, borderWidth: 1, borderColor: ICON_GREEN },
+  encryptedBadge: { marginTop: 16, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: 'rgba(6, 182, 212, 0.1)', borderRadius: 20, borderWidth: 1, borderColor: ICON_GREEN },
   encryptedText: { color: ICON_GREEN, fontSize: 12, fontWeight: '600' },
 
   controlsGrid: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', marginBottom: 40, gap: 16 },
   controlBtn: { flex: 1, paddingVertical: 16, backgroundColor: '#f5f5f5', borderRadius: 12, alignItems: 'center', borderWidth: 2, borderColor: '#e0e0e0' },
-  controlBtnActive: { borderColor: ICON_GREEN, backgroundColor: 'rgba(52, 199, 89, 0.05)' },
-  controlBtnLabel: { fontSize: 11, fontWeight: '600', color: '#666', marginTop: 8 },
+  controlBtnActive: { borderColor: ICON_GREEN, backgroundColor: 'rgba(6, 182, 212, 0.1)' },
+  controlBtnLabel: { fontSize: 11, fontWeight: '600', color: '#333', marginTop: 8 },
 
-  endCallButton: { width: '100%', paddingVertical: 14, backgroundColor: '#ff3b30', borderRadius: 10, alignItems: 'center' },
+  endCallButton: { width: '100%', paddingVertical: 14, backgroundColor: '#ef4444', borderRadius: 10, alignItems: 'center' },
   endCallText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 
-  successCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(52, 199, 89, 0.15)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 2, borderColor: ICON_GREEN },
+  successCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(6, 182, 212, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 2, borderColor: ICON_GREEN },
   successIcon: { fontSize: 40, color: ICON_GREEN, fontWeight: '800' },
   endedTitle: { fontSize: 22, fontWeight: '700', color: '#000', marginBottom: 8 },
   endedDuration: { fontSize: 28, fontWeight: '700', color: ICON_GREEN, marginBottom: 4 },
-  endedMessage: { fontSize: 12, color: '#999', marginBottom: 30 },
+  endedMessage: { fontSize: 12, color: '#666', marginBottom: 30 },
 
-  newCallButton: { width: '100%', paddingVertical: 12, backgroundColor: ICON_GREEN, borderRadius: 10, alignItems: 'center' },
+  newCallButton: { width: '100%', paddingVertical: 12, backgroundColor: PRIMARY_COLOR, borderRadius: 10, alignItems: 'center' },
   newCallText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 
-  errorBanner: { backgroundColor: '#ffe0e0', borderLeftWidth: 4, borderLeftColor: '#ff3b30', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 8, marginBottom: 20 },
-  errorText: { color: '#ff3b30', fontSize: 13, fontWeight: '500' },
+  errorBanner: { backgroundColor: '#ffe0e0', borderLeftWidth: 4, borderLeftColor: '#ef4444', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 8, marginBottom: 20 },
+  errorText: { color: '#ef4444', fontSize: 13, fontWeight: '500' },
 
   // FULLSCREEN VIDEO
   videoFullscreen: { flex: 1, backgroundColor: '#000', justifyContent: 'space-between' },
@@ -554,8 +590,13 @@ const styles = StyleSheet.create({
   localVideoText: { color: '#fff', fontSize: 12, fontWeight: '600' },
 
   fullscreenControls: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingVertical: 24, paddingHorizontal: 20, backgroundColor: 'rgba(0,0,0,0.5)' },
-  fscButton: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: ICON_GREEN },
-  fscButtonActive: { backgroundColor: 'rgba(52, 199, 89, 0.2)' },
-  fscButtonEnd: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#ff3b30', justifyContent: 'center', alignItems: 'center' },
+  fscButton: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#888' },
+  fscButtonActive: { backgroundColor: 'rgba(52, 199, 89, 0.2)', borderColor: PRIMARY_COLOR },
+  fscButtonInactive: { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: '#666' },
+  fscButtonEnd: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#ef4444', justifyContent: 'center', alignItems: 'center' },
   fscEndText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+
+  // TOAST BANNER
+  toastBanner: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(52, 199, 89, 0.95)', paddingHorizontal: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  toastText: { color: '#fff', fontSize: 14, fontWeight: '600', textAlign: 'center' },
 });
