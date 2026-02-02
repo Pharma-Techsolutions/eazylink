@@ -1,35 +1,33 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "EazyLink",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0a0e27"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.peeti1163.mobile",
+      "supportsTablet": false,
+      "bundleIdentifier": "com.offgrid.eazylink",
       "infoPlist": {
+        "NSMicrophoneUsageDescription": "We need access to your microphone for calls",
+        "NSCameraUsageDescription": "Camera access is required by our VoIP provider",
+        "NSLocalNetworkUsageDescription": "We need access to your local network for calling",
+        "NSBonjourServiceTypes": ["_services._dns-sd._udp"],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0a0e27"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.peeti1163.mobile"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
+      "package": "com.offgrid.eazylink"
     },
     "extra": {
       "eas": {

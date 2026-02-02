@@ -1,16 +1,17 @@
 import axios from 'axios';
 import { TokenManager, generateDeviceId } from './secureStorage';
-import { Config } from '../constants/config';
+
+// Hardcode API URL for production
+const API_URL = 'https://eazylink-api-ba6e90685826.herokuapp.com/api/v1';
 
 const api = axios.create({
-  baseURL: Config.API_URL,
+  baseURL: API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Add token to requests
 api.interceptors.request.use(async (config) => {
   try {
     const token = await TokenManager.getAccessToken();
@@ -37,20 +38,11 @@ export const callAPI = {
   initiateCall: (recipientId: string) =>
     api.post('/calls/initiate', { recipient_id: parseInt(recipientId) }),
   
-  getCallVerificationCode: (callId: string) =>
-    api.get(`/calls/${callId}/verification-code`),
-  
-  confirmCallCode: (callId: string, code: string) =>
-    api.post(`/calls/${callId}/confirm-code`, { code }),
-  
   endCall: (callId: string, durationSeconds: number) =>
     api.post(`/calls/${callId}/end`, { duration_seconds: durationSeconds }),
   
   getCallHistory: (limit = 50, offset = 0) =>
     api.get(`/calls/history?limit=${limit}&offset=${offset}`),
-  
-  reportCall: (callId: string, reason: string, description?: string) =>
-    api.post(`/calls/${callId}/report`, { reason, description }),
 };
 
 export const agoraAPI = {
@@ -60,7 +52,6 @@ export const agoraAPI = {
 
 export const userAPI = {
   getProfile: () => api.get('/users/me'),
-  updateProfile: (data: any) => api.patch('/users/me', data),
 };
 
 export default api;
